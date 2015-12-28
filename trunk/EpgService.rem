@@ -1,0 +1,86 @@
+<?php require_once('functions.inc.php') ?>
+<?php
+ob_start('ob_gzhandler');
+header("Content-Type: text/xml; charset=utf-8");
+useXmlCache();
+?>
+<?php echo '<?xml version="1.0" encoding="utf-8"?>' ?>
+
+<methodResponse>
+	<params>
+		<param>
+			<value>
+				<struct> 
+<?php
+$post_data = file_get_contents("php://input");
+$xml = simplexml_load_string($post_data);
+foreach ($xml->params->param->value->struct->member as $member) {
+	$value = (isset($member->value->base64) ? (string) $member->value->base64 : (isset($member->value->string) ? (string) $member->value->string : (int) $member->value->i4));
+	$name = (string) $member->name;
+	$_GET[$name] = $value;
+}
+$_GET['ProviderId'] = $_GET['provider_ID'];
+$_GET['DaysRequested'] = (int) round($_GET['duration'] / (24.0*60.0));
+$config['numDaysEPG'] = $_GET['DaysRequested'];
+$_GET['from_day'] = substr($_GET['from_time'], 0, 10); // 2010-01-15
+
+if (isset($_GET['ProviderId'])) {
+	$providerId = $_GET['ProviderId'];
+	setBaseTime($providerId);
+	if (!isset($config['providers'][$providerId])) {
+		$programsXML = '';
+		?>
+					<member>
+						<name>auth_err</name>
+						<value>
+							<int>1</int>
+						</value> 
+					</member>
+		<?php
+	} else if ($config['providers'][$providerId]['epg-source'] == 'sd') {
+		// TODO
+		$programsXML = '';
+		?>
+					<member>
+						<name>auth_err</name>
+						<value>
+							<int>0</int>
+						</value> 
+					</member>
+		<?php
+	} else if ($config['providers'][$providerId]['epg-source'] == 'xmltv') {
+		$system_timezone = date('T');
+		date_default_timezone_set('UTC');
+		require_once('functions-xmltv.inc.php');
+		parseEPGDataXMLTVTVGuide($config['providers'][$providerId]['zap2it_providerId']);
+		?>
+					<member>
+						<name>auth_err</name>
+						<value>
+							<int>0</int>
+						</value> 
+					</member>
+		<?php
+	}
+}
+?>
+					<member>
+						<name>provider_ID</name>
+						<value>
+							<int><?php echo $providerId ?></int>
+						</value>
+					</member>
+					<member>
+						<name>epg</name>
+						<value>
+							<string>
+								<provider_ID> <?php echo $providerId ?></provider_ID>
+								<?php echo $programsXML ?>
+							</string>
+						</value>
+					</member>
+				</struct>
+			</value>
+		</param>
+	</params>
+</methodResponse>

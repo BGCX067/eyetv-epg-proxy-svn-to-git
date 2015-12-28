@@ -1,0 +1,34 @@
+<ProviderCollection xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://www.titantv.com/services/dataservice">
+  <ErrorCode>0</ErrorCode>
+  <ErrorDescription>OK</ErrorDescription>
+  <Provider>
+    <ProviderId>S_10001</ProviderId>
+    <ServiceType>satellite</ServiceType>
+    <Description>Use 'type' =&gt; 'satellite' in config.inc.php</Description>
+    <City/>
+  </Provider>
+  <Provider>
+    <ProviderId>A_10002</ProviderId>
+    <ServiceType>cable</ServiceType>
+    <Description>Use 'type' =&gt; 'cable' in config.inc.php</Description>
+    <City/>
+  </Provider>
+  <Provider>
+    <ProviderId>D_10003</ProviderId>
+    <ServiceType>digital_cable</ServiceType>
+    <Description>Use 'type' =&gt; 'digital_cable' in config.inc.php</Description>
+    <City/>
+  </Provider>
+  <Provider>
+    <ProviderId>H_10004</ProviderId>
+    <ServiceType>analog</ServiceType>
+    <Description>Use 'type' =&gt; 'analog' in config.inc.php</Description>
+    <City/>
+  </Provider>
+  <Provider>
+    <ProviderId>G_10005</ProviderId>
+    <ServiceType>digital</ServiceType>
+    <Description>Use 'type' =&gt; 'digital' in config.inc.php</Description>
+    <City/>
+  </Provider>
+</ProviderCollection>

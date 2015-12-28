@@ -1,0 +1,112 @@
+<?php require_once('functions.inc.php') ?>
+<?php
+ob_start('ob_gzhandler');
+header("Content-Type: text/xml; charset=utf-8");
+useXmlCache();
+?>
+<?php echo '<?xml version="1.0" encoding="utf-8"?>' ?>
+
+<?php
+$post_data = file_get_contents("php://input");
+$xml = simplexml_load_string($post_data);
+foreach ($xml->params->param->value->struct->member as $member) {
+	$value = (isset($member->value->base64) ? (string) $member->value->base64 : (isset($member->value->string) ? (string) $member->value->string : (int) $member->value->i4));
+	$name = (string) $member->name;
+	$_GET[$name] = $value;
+}
+
+if ($xml->methodName == 'fetchProviders') {
+	$providers_xml = '<providers>';
+	foreach ($config['providers'] as $providerId => $provider) {
+		$providers_xml .= '<provider><provider_ID>' . $providerId . '</provider_ID><description>' . $provider['desc'] . ' - ' . $provider['city'] . '</description><service_type>' . $provider['type'] . '</service_type></provider>';
+	}
+	$providers_xml .= '</providers>';
+	?>
+<methodResponse> 
+	<params> 
+		<param> 
+			<value> 
+				<struct> 
+					<member> 
+						<name>postal_code</name> 
+						<value> 
+							<string><?php echo xmlize($_GET['postal_code']) ?></string> 
+						</value> 
+					</member> 
+					<member> 
+						<name>provider_list</name> 
+						<value> 
+							<string><?php echo xmlize($providers_xml) ?></string> 
+						</value> 
+					</member> 
+					<member> 
+						<name>auth_err</name> 
+						<value> 
+							<i4>0</i4> 
+						</value> 
+					</member> 
+				</struct> 
+			</value> 
+		</param> 
+	</params> 
+</methodResponse><?php
+} else {
+	$providerId = $_GET['provider_ID'];
+
+	require_once('functions-xmltv.inc.php');
+	$response = getEPGDataXMLTV($config['providers'][$providerId]['zap2it_providerId']);
+	
+	$stationDisplayName = array();
+	if (file_exists($config['providers'][$providerId]['zap2it_providerId'].".channels")) {
+		$fp = fopen($config['providers'][$providerId]['zap2it_providerId'].".channels", "r")
+			or die("Can't open ".$config['providers'][$providerId]['zap2it_providerId'].".channels file for reading.");
+		while (!feof($fp)) {
+			$line = ereg_replace("[\r\n]*","",fgets($fp, 1024));
+			if (ereg("^([0-9\.]+)\t(.*)$", $line, $regs) !== false) {
+				$rfId = $regs[1];
+				$name = $regs[2];
+				$stationDisplayName["$rfId"] = $name;
+			}
+		}
+		fclose($fp);
+	}
+
+	$lineup_xml = '<lineup>';
+	foreach ($response->channel as $channel) {
+		$source_id = (strpos($channel['id'], '.') !== FALSE ? '99' : '') . str_replace('.', '', $channel['id']);
+		if (!isset($stationDisplayName[(string) $channel['id']])) {
+			$stationDisplayName[(string) $channel['id']] = $channel->{'display-name'};
+		}
+		$lineup_xml .= '<channel><source_ID>'.$source_id.'</source_ID><short_name>'.xmlize($stationDisplayName[(string) $channel['id']]).'</short_name><full_name>'.xmlize($stationDisplayName[(string) $channel['id']]).'</full_name><call_letters>'.xmlize($channel->{'display-name'}).'</call_letters><affiliation>0</affiliation><ota_channel_number>'.$channel['id'].'</ota_channel_number>'.($channel['id'] == $source_id ? '' : '<virtual_channel_number>'.$channel['id'].'</virtual_channel_number>').'<service_type>'.($channel['id'] == $source_id ? 'Analog' : 'Digital').'</service_type></channel>';
+	}
+	$lineup_xml .= '</lineup>';
+	?>
+<methodResponse> 
+	<params> 
+		<param> 
+			<value> 
+				<struct> 
+					<member> 
+						<name>provider_ID</name> 
+						<value> 
+							<i4><?php echo $providerId ?></i4> 
+						</value> 
+					</member> 
+					<member> 
+						<name>lineup</name> 
+						<value> 
+							<string><?php echo xmlize($lineup_xml) ?></string> 
+						</value> 
+					</member> 
+					<member> 
+						<name>auth_err</name> 
+						<value> 
+							<i4>0</i4> 
+						</value> 
+					</member> 
+				</struct> 
+			</value> 
+		</param> 
+	</params> 
+</methodResponse><?php
+}
